@@ -3,8 +3,7 @@
 Developped on Python 3.10
 
 Requirements
-- pip install fastapi
-- pip install uvicorn
+- None
 
 console -> python -m main
 

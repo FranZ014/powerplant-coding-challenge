@@ -1,14 +1,6 @@
 ## How to launch the app
 
-Developped on Python 3.10
-
-Requirements
-- None
-
 console -> python -m main
-
-start coding : 11h04
-stop coding : 14h57
 
 ## TODO List
 
@@ -22,8 +14,8 @@ Architecture :
 Fonctions : 
 
 On request "productionplan"
-1. Read input json
+1. Read input json from client
 2. Parse data into PowerPlants and IPhysicsFactor
 3. Compute which power plant to activate
 4. Fill up data into nameless objects
-5. Write output json  
+5. Write output json to client

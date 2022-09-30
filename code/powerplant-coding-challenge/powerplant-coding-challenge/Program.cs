@@ -6,6 +6,8 @@ using Newtonsoft.Json.Linq;
 
 using powerplant_coding_challenge;
 
+using System.Text;
+
 //-----------------------------------
 // Fields
 //-----------------------------------
@@ -20,30 +22,18 @@ var builder = WebApplication.CreateBuilder(args);
 /// </summary>
 var app = builder.Build();
 
-/// <summary>
-/// This is the input file used as an input.
-/// </summary>
-const String INPUT_FILE_NAME = "payload1.json";
-
-/// <summary>
-/// This is the output file used as an output.
-/// </summary>
-const String OUTPUT_FILE_NAME = "example_response.json";
-
 //-----------------------------------
 // Functions
 //-----------------------------------
 /// <summary>
 /// This si the method used to read the production data, compute the activation of the prodctuors and export the data.
 /// </summary>
-String ProductionplanMethod (String fileName)
+String ProductionplanMethod (HttpContext context)
 {
     // FCTN 01 - read data
-    if (!File.Exists(fileName))
-    {
-        return "Input file not found";
-    }
-    String fileDataReaded = File.ReadAllText(fileName);
+    var bodyStream = new StreamReader(context.Request.Body);
+    String fileDataReaded = bodyStream.ReadToEnd();
+
     JToken? jsonReaded = null;
     try
     {
@@ -240,6 +230,7 @@ String ProductionplanMethod (String fileName)
             {
                 loadLeft += productors[i].OutputPower;
                 productors[i].Activation = 0;
+                break;
             }
         }
 
@@ -287,7 +278,8 @@ String ProductionplanMethod (String fileName)
     // FCTN 05 - write data
     try
     {
-        File.WriteAllText(OUTPUT_FILE_NAME, jsonExport);
+        byte[] bytes = Encoding.ASCII.GetBytes(jsonExport);
+        context.Response.Body.WriteAsync(bytes, 0, bytes.Length);
     }
     catch (Exception ex)
     {
@@ -346,7 +338,7 @@ String UnitTest ( )
 /// <summary>
 /// This is the required first route.
 /// </summary>
-app.MapGet("/productionplan", () => ProductionplanMethod(INPUT_FILE_NAME));
+app.MapPost("/productionplan", (HttpContext context) => ProductionplanMethod(context));
 
 /// <summary>
 /// This is the route used to test the classes created.

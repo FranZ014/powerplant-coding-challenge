@@ -88,7 +88,7 @@ class PowerPlant :
         """This method is used to compute and retrieve the price production of the power plant."""
         
         if self.__power_plant_computed_price_rate__ is None:
-            self.__power_plant_computed_price_rate__ = self.__power_plant_price__ * self.__power_plant_efficiency__
+            self.__power_plant_computed_price_rate__ = self.__power_plant_price__ / self.__power_plant_efficiency__
 
         return self.__power_plant_computed_price_rate__
 
@@ -139,7 +139,7 @@ class PowerPlant :
         return self.compute_output_power()
 
     # -------------
-    # Getters
+    # Setters
     # -------------
 
     def set_activation (self, activation: float) -> None:

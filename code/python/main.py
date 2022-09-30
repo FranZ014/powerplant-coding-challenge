@@ -22,25 +22,77 @@ def parse_data (productionPlan: ProductionPlan) -> Optional[object] :
         power_plants = []
 
         load: float = productionPlan.load
-        gas_price: float = productionPlan.fuels['gas(euro/MWh)']
-        kerosine_price: float = productionPlan.fuels['kerosine(euro/MWh)']
-        co2_price: float = productionPlan.fuels['co2(euro/ton)']
-        wind_power: float = productionPlan.fuels['wind(%)']
+        gas_price: float = 0.0
+        kerosine_price: float = 0.0
+        co2_price: float = 0.0
+        wind_power: float = 0.0
+
+        if 'gas(euro/MWh)' in productionPlan.fuels :
+            gas_price = productionPlan.fuels['gas(euro/MWh)']
+        else:
+            print("ERROR : the gas price has not been found in the data - aborting.")
+            return None
+
+        if 'kerosine(euro/MWh)' in productionPlan.fuels :
+            kerosine_price = productionPlan.fuels['kerosine(euro/MWh)']
+        else:
+            print("ERROR : the kerosine price has not been found in the data - aborting.")
+            return None
+
+        if 'co2(euro/ton)' in productionPlan.fuels :
+            co2_price = productionPlan.fuels['co2(euro/ton)']
+        else:
+            print("WARNING : the co2 emission price has not been found in the data. - passed because not used.")
+
+        if 'wind(%)' in productionPlan.fuels :
+            wind_power = productionPlan.fuels['wind(%)']
+        else:
+            print("ERROR : the wind power has not been found in the data - aborting.")
         
         wind_physic_factor = WindFactor(wind_power/100)
-        pp_index = 0
+        pp_index = -1
 
         for power_plant_data in productionPlan.powerplants: 
 
             pp_index += 1
-            pp_name: str = power_plant_data['name']
-            pp_type: str = power_plant_data['type']
-            pp_efficiency: float = power_plant_data['efficiency']
-            pp_pmin: float = power_plant_data['pmin']
-            pp_pmax: float = power_plant_data['pmax']
+
+            pp_name: str = ""
+            pp_type: str = ""
+            pp_efficiency: float = 1.0
+            pp_pmin: float = 0.0
+            pp_pmax: float = 0.0
             pp_price: float = 0.0
             pp_physic_factors: list[IPhysicFactor] = list()
             pp_aon: bool = False
+
+            if 'name' in power_plant_data :
+                pp_name: str = power_plant_data['name']
+            else:
+                print("ERROR : powerplant #", pp_index, "does not have a name - powerplant not imported.")
+                continue
+
+            if 'type' in power_plant_data :
+                pp_type: str = power_plant_data['type']
+            else:
+                print("ERROR : the", pp_name, "powerplant does not have a type - powerplant not imported.")
+                continue
+            
+            if 'efficiency' in power_plant_data :
+                pp_efficiency = power_plant_data['efficiency']
+            else:
+                print("WARNING : the", pp_name, "powerplant does not have an efficiency factor - 1.0 has been used")
+
+            if 'pmin' in power_plant_data :
+                pp_pmin = power_plant_data['pmin']
+            else:
+                print("ERROR : the", pp_name, "powerplant does not have a minimum power - powerplant not imported.")
+                continue
+
+            if 'pmax' in power_plant_data:
+                pp_pmax = power_plant_data['pmax']
+            else:
+                print("ERROR : the", pp_name, "powerplant does not have a maximum power - powerplant not imported.")
+                continue
 
             if pp_type == "gasfired" :
                 pp_physic_factors = None
@@ -54,8 +106,16 @@ def parse_data (productionPlan: ProductionPlan) -> Optional[object] :
                 pp_physic_factors.append(wind_physic_factor)
                 pp_aon = True
 
+            else:
+                print("ERROR : the", pp_name, "powerplant of the type \"", pp_type,"\" has not been recognized - powerplant not imported.")
+                continue
+
             power_plants.append(PowerPlant(pp_index, pp_name, pp_type, pp_efficiency, pp_pmin, pp_pmax, pp_price, pp_aon, pp_physic_factors))
             del pp_physic_factors
+
+        if len(power_plants) == 0 :
+            print("ERROR : no power plants imported ...")
+            return None
 
         return [load, power_plants]
 
@@ -82,8 +142,7 @@ def compute_powerplants (load: float, power_plants: list[PowerPlant]) -> None :
 
         else:
             break
-        
-    print("load left after no cost power plant : ", load_left)
+
     
     # If power left -> activate higher price
     if load_left > 0 :
@@ -97,8 +156,6 @@ def compute_powerplants (load: float, power_plants: list[PowerPlant]) -> None :
                 continue
 
             load_left -= power_plant.compute_activation(load_left)
-            
-        print("load left after low price linear not priceless : ", load_left)
 
     # If power left -> it's due to pmin, deactivate last AON (expensive one, or just index wise) and activate low price linear producer
     if load_left > 0 :
@@ -135,8 +192,6 @@ def compute_powerplants (load: float, power_plants: list[PowerPlant]) -> None :
                     nothing_changed = True
                     load_left -= power_plant.compute_activation(load_left)
 
-        print("load left after expensive linear power plants and deactivation of aon : ", load_left)
-
     # If power left -> reactivate aon until negative power left
     if load_left > 0 :
 
@@ -148,7 +203,7 @@ def compute_powerplants (load: float, power_plants: list[PowerPlant]) -> None :
             if power_plant.is_all_or_nothing() and power_plant.get_activation() == 0 :
                 load_left -= power_plant.compute_activation(load_left)
 
-        print("load left after activation of every power plant", load_left)
+        print("WARNING : load left after activation of every power plant : ", load_left)
 
     # Sort by indices
     power_plants.sort(key= lambda power_plant: power_plant.get_index())
@@ -194,6 +249,13 @@ if __name__ == "__main__" :
             # Export the data
             return create_exportable_data(power_plants)
 
-        return "Something went wrong"
+        else :
+            print("An error occured while parsing the received data")
+            print("data received : ")
+            print(productionPlan)
+            print("")
+            print("------------------")
+
+            return {}
 
     uvicorn.run(app, host="0.0.0.0", port=8888)
